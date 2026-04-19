@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Loader2, ImageOff } from 'lucide-react';
+import { diaryAuthHeaders } from '@/lib/config';
 
 interface ProxiedImageProps {
   src: string;
@@ -20,7 +21,7 @@ export function ProxiedImage({ src, alt, className = '' }: ProxiedImageProps) {
     setHasError(false);
 
     fetch(src, {
-      headers: { 'ngrok-skip-browser-warning': 'true' },
+      headers: diaryAuthHeaders(),
     })
       .then((res) => {
         if (!res.ok) throw new Error('Failed to load image');

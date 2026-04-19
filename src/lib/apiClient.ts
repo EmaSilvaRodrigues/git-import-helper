@@ -9,14 +9,21 @@ import type {
   Stats,
   WeekTimeline,
 } from './types';
-
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://sixtypenny-pseudonymously-randall.ngrok-free.dev';
+import {
+  DIARY_BASE_URL,
+  diaryAuthHeaders,
+  diaryErrorMessage,
+} from './config';
 
 class ApiClient {
   private baseUrl: string;
 
   constructor(baseUrl: string) {
     this.baseUrl = baseUrl.replace(/\/$/, '');
+  }
+
+  get base(): string {
+    return this.baseUrl;
   }
 
   private async request<T>(
@@ -30,15 +37,19 @@ class ApiClient {
         ...options,
         headers: {
           'Content-Type': 'application/json',
-          'ngrok-skip-browser-warning': 'true',
-          'x-api-key': 'e81f7f0421f39c243691c78e518b07d8f692f90f3e89ec0d53d0d2467adfb5a9',
+          ...diaryAuthHeaders(),
           ...options.headers,
         },
       });
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
+        throw new Error(
+          diaryErrorMessage(
+            response.status,
+            errorData.error || `HTTP ${response.status}: ${response.statusText}`
+          )
+        );
       }
 
       const data = await response.json();
@@ -49,7 +60,7 @@ class ApiClient {
 
       return data;
     } catch (error) {
-      console.error('API Error:', error);
+      console.error('[Diary API] Error:', error);
       throw error;
     }
   }
@@ -128,15 +139,17 @@ class ApiClient {
     const response = await fetch(url, {
       method: 'POST',
       body: formData,
-      headers: {
-        'ngrok-skip-browser-warning': 'true',
-        'x-api-key': 'e81f7f0421f39c243691c78e518b07d8f692f90f3e89ec0d53d0d2467adfb5a9',
-      },
+      headers: diaryAuthHeaders(),
     });
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || `Upload failed: ${response.statusText}`);
+      throw new Error(
+        diaryErrorMessage(
+          response.status,
+          errorData.error || `Upload failed: ${response.statusText}`
+        )
+      );
     }
 
     const data = await response.json();
@@ -186,9 +199,34 @@ class ApiClient {
   }
 
   async healthCheck(): Promise<{ status: string; timestamp: string }> {
-    return this.request('/api/utils/health');
+    // The diary backend exposes /health at the root (not under /api/utils).
+    const url = `${this.baseUrl}/health`;
+    const res = await fetch(url, { headers: diaryAuthHeaders() });
+    if (!res.ok) {
+      throw new Error(diaryErrorMessage(res.status, `Health check failed (HTTP ${res.status})`));
+    }
+    return res.json();
   }
 }
 
-export const apiClient = new ApiClient(API_BASE_URL);
+export const apiClient = new ApiClient(DIARY_BASE_URL);
 export type { ImageUploadResponse };
+
+// ---- Startup health check ----------------------------------------------
+// Runs once on app load so misconfiguration (wrong backend URL or wrong API
+// key) shows up immediately in the console instead of failing silently per
+// request.
+if (typeof window !== 'undefined') {
+  console.info(`[Diary API] Using base URL: ${DIARY_BASE_URL}`);
+  apiClient
+    .healthCheck()
+    .then((h) => console.info('[Diary API] /health OK', h))
+    .catch((err) => console.warn('[Diary API] /health failed:', err.message));
+
+  apiClient
+    .getHistory(1, 0)
+    .then(() => console.info('[Diary API] /api/checkins/history OK'))
+    .catch((err) =>
+      console.warn('[Diary API] /api/checkins/history failed:', err.message)
+    );
+}
