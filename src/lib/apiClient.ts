@@ -10,7 +10,7 @@ import type {
   WeekTimeline,
 } from './types';
 import {
-  DIARY_BASE_URL,
+  RESOLVED_DIARY_BASE_URL,
   diaryAuthHeaders,
   diaryErrorMessage,
 } from './config';
@@ -209,7 +209,7 @@ class ApiClient {
   }
 }
 
-export const apiClient = new ApiClient(DIARY_BASE_URL);
+export const apiClient = new ApiClient(RESOLVED_DIARY_BASE_URL);
 export type { ImageUploadResponse };
 
 // ---- Startup health check ----------------------------------------------
@@ -217,7 +217,7 @@ export type { ImageUploadResponse };
 // key) shows up immediately in the console instead of failing silently per
 // request.
 if (typeof window !== 'undefined') {
-  console.info(`[Diary API] Using base URL: ${DIARY_BASE_URL}`);
+  console.info(`[Diary API] Using base URL: ${RESOLVED_DIARY_BASE_URL}`);
   apiClient
     .healthCheck()
     .then((h) => console.info('[Diary API] /health OK', h))
