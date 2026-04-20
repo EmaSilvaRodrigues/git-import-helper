@@ -28,11 +28,28 @@ export const DIARY_BASE_URL = (
 export const DIARY_API_KEY =
   import.meta.env.VITE_DIARY_API_KEY || DEFAULT_DIARY_API_KEY;
 
+// Hard guarantee: the diary backend lives under /diary. If somehow a base URL
+// without that suffix is configured (old env var, root-domain leftover), force
+// it back so production/mobile never call the wrong backend.
+export const RESOLVED_DIARY_BASE_URL = /\/diary$/.test(DIARY_BASE_URL)
+  ? DIARY_BASE_URL
+  : `${DIARY_BASE_URL.replace(/\/$/, '')}/diary`;
+
 /** Common headers that every diary request must send. */
 export const diaryAuthHeaders = (): Record<string, string> => ({
   'x-api-key': DIARY_API_KEY,
   'ngrok-skip-browser-warning': 'true',
 });
+
+if (typeof window !== 'undefined') {
+  console.info('[Diary Config] Resolved base URL:', RESOLVED_DIARY_BASE_URL);
+  console.info(
+    '[Diary Config] x-api-key header attached:',
+    Boolean(DIARY_API_KEY),
+    DIARY_API_KEY ? `(length ${DIARY_API_KEY.length})` : '(MISSING!)'
+  );
+  console.info('[Diary Config] Mode:', import.meta.env.MODE, '| PROD:', import.meta.env.PROD);
+}
 
 /** Human-readable error for HTTP status codes from the diary backend. */
 export function diaryErrorMessage(status: number, fallback?: string): string {
