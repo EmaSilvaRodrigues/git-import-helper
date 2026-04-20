@@ -26,20 +26,29 @@ class ApiClient {
     return this.baseUrl;
   }
 
+  private buildUrl(endpoint: string): string {
+    const normalizedEndpoint = endpoint.replace(/^\/+/, '');
+    return `${this.baseUrl}/${normalizedEndpoint}`;
+  }
+
   private async request<T>(
     endpoint: string,
     options: RequestInit = {}
   ): Promise<T> {
-    const url = `${this.baseUrl}${endpoint}`;
+    const url = this.buildUrl(endpoint);
+    const headers = {
+      'Content-Type': 'application/json',
+      ...diaryAuthHeaders(),
+      ...options.headers,
+    };
+
+    console.info('[Diary API] Request URL:', url);
+    console.info('[Diary API] x-api-key header attached:', Boolean(headers['x-api-key']));
 
     try {
       const response = await fetch(url, {
         ...options,
-        headers: {
-          'Content-Type': 'application/json',
-          ...diaryAuthHeaders(),
-          ...options.headers,
-        },
+        headers,
       });
 
       if (!response.ok) {
@@ -67,18 +76,18 @@ class ApiClient {
 
   // ============ USERS ============
   async getUsers(): Promise<User[]> {
-    const response = await this.request<{ success: boolean; users: User[] }>('/api/users');
+    const response = await this.request<{ success: boolean; users: User[] }>('api/users');
     return response.users;
   }
 
   async getUser(userId: UserId): Promise<User> {
-    const response = await this.request<{ success: boolean; user: User }>(`/api/users/${userId}`);
+    const response = await this.request<{ success: boolean; user: User }>(`api/users/${userId}`);
     return response.user;
   }
 
   // ============ CHECK-INS ============
   async createCheckIn(data: CreateCheckInRequest): Promise<CheckIn> {
-    const response = await this.request<{ success: boolean; checkin: CheckIn }>('/api/checkins', {
+    const response = await this.request<{ success: boolean; checkin: CheckIn }>('api/checkins', {
       method: 'POST',
       body: JSON.stringify(data),
     });
@@ -88,7 +97,7 @@ class ApiClient {
   async getCheckIn(userId: UserId, weekNumber: number, year: number): Promise<CheckIn | null> {
     try {
       const response = await this.request<{ success: boolean; checkin: CheckIn }>(
-        `/api/checkins/${userId}/${weekNumber}/${year}`
+        `api/checkins/${userId}/${weekNumber}/${year}`
       );
       return response.checkin;
     } catch {
@@ -99,7 +108,7 @@ class ApiClient {
   async getCheckInsForWeek(weekNumber: number, year: number): Promise<CheckIn[]> {
     try {
       const response = await this.request<{ success: boolean; checkins: CheckIn[] }>(
-        `/api/checkins/week/${weekNumber}/${year}`
+        `api/checkins/week/${weekNumber}/${year}`
       );
       return response.checkins || [];
     } catch {
@@ -109,7 +118,7 @@ class ApiClient {
 
   async updateCheckIn(checkinId: number, data: UpdateCheckInRequest): Promise<CheckIn> {
     const response = await this.request<{ success: boolean; checkin: CheckIn }>(
-      `/api/checkins/${checkinId}`,
+      `api/checkins/${checkinId}`,
       {
         method: 'PUT',
         body: JSON.stringify(data),
@@ -120,7 +129,7 @@ class ApiClient {
 
   async getHistory(limit: number = 10, offset: number = 0): Promise<{ timeline: WeekTimeline[]; count: number }> {
     const response = await this.request<{ success: boolean; timeline: WeekTimeline[]; count: number }>(
-      `/api/checkins/history?limit=${limit}&offset=${offset}`
+      `api/checkins/history?limit=${limit}&offset=${offset}`
     );
     return { timeline: response.timeline || [], count: response.count || 0 };
   }
@@ -134,7 +143,9 @@ class ApiClient {
     formData.append('image', file);
     formData.append('checkin_id', checkinId.toString());
 
-    const url = `${this.baseUrl}/api/images/upload`;
+    const url = this.buildUrl('api/images/upload');
+    console.info('[Diary API] Request URL:', url);
+    console.info('[Diary API] x-api-key header attached:', Boolean(diaryAuthHeaders()['x-api-key']));
 
     const response = await fetch(url, {
       method: 'POST',
@@ -164,7 +175,7 @@ class ApiClient {
   async getCheckInImages(checkinId: number): Promise<ImageUploadResponse[]> {
     try {
       const response = await this.request<{ success: boolean; images: ImageUploadResponse[] }>(
-        `/api/images/checkin/${checkinId}`
+        `api/images/checkin/${checkinId}`
       );
       return response.images || [];
     } catch {
@@ -173,7 +184,7 @@ class ApiClient {
   }
 
   async deleteImage(imageId: number): Promise<void> {
-    await this.request(`/api/images/${imageId}`, { method: 'DELETE' });
+    await this.request(`api/images/${imageId}`, { method: 'DELETE' });
   }
 
   getImageUrl(filename: string): string {
@@ -183,7 +194,7 @@ class ApiClient {
 
   // ============ UTILS ============
   async getCurrentWeek(): Promise<CurrentWeek> {
-    const response = await this.request<CurrentWeek & { success: boolean }>('/api/utils/current-week');
+    const response = await this.request<CurrentWeek & { success: boolean }>('api/utils/current-week');
     return {
       current_week: response.current_week,
       current_year: response.current_year,
@@ -194,14 +205,17 @@ class ApiClient {
   }
 
   async getStats(): Promise<Stats> {
-    const response = await this.request<{ success: boolean; stats: Stats }>('/api/utils/stats');
+    const response = await this.request<{ success: boolean; stats: Stats }>('api/utils/stats');
     return response.stats;
   }
 
   async healthCheck(): Promise<{ status: string; timestamp: string }> {
     // The diary backend exposes /health at the root (not under /api/utils).
-    const url = `${this.baseUrl}/health`;
-    const res = await fetch(url, { headers: diaryAuthHeaders() });
+    const url = this.buildUrl('health');
+    const headers = diaryAuthHeaders();
+    console.info('[Diary API] Request URL:', url);
+    console.info('[Diary API] x-api-key header attached:', Boolean(headers['x-api-key']));
+    const res = await fetch(url, { headers });
     if (!res.ok) {
       throw new Error(diaryErrorMessage(res.status, `Health check failed (HTTP ${res.status})`));
     }
