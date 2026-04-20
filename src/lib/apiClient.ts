@@ -10,7 +10,7 @@ import type {
   WeekTimeline,
 } from './types';
 import {
-  DIARY_BASE_URL,
+  RESOLVED_DIARY_BASE_URL,
   diaryAuthHeaders,
   diaryErrorMessage,
 } from './config';
