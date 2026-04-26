@@ -20,7 +20,11 @@ export function useCheckIns(userId: UserId | null) {
       })
       .catch((error) => {
         console.error('Failed to load week data:', error);
-        setWeekError('Erro ao carregar dados da semana');
+        setWeekError(
+          error instanceof Error
+            ? `Erro ao carregar dados do servidor: ${error.message}`
+            : 'Erro ao carregar dados do servidor'
+        );
         setWeekLoaded(true);
       });
   }, []);
@@ -29,6 +33,7 @@ export function useCheckIns(userId: UserId | null) {
   const {
     data: currentWeekCheckIn,
     isLoading: isLoadingCheckIn,
+    error: checkInError,
   } = useQuery({
     queryKey: ['checkin', userId, weekData?.current_week, weekData?.current_year],
     queryFn: async () => {
@@ -42,6 +47,7 @@ export function useCheckIns(userId: UserId | null) {
   const {
     data: weekCheckIns = [],
     isLoading: isLoadingWeek,
+    error: weekCheckInsError,
   } = useQuery({
     queryKey: ['week-checkins', weekData?.current_week, weekData?.current_year],
     queryFn: async () => {
@@ -137,14 +143,20 @@ export function useCheckIns(userId: UserId | null) {
     ? canEditWeek(weekData.current_week, weekData.current_year, weekData)
     : false;
 
+  const queryError = checkInError || weekCheckInsError;
+
   return {
     currentWeekCheckIn,
     weekCheckIns,
     weekData,
-    weekError,
+    weekError:
+      weekError ||
+      (queryError instanceof Error
+        ? `Erro ao carregar dados do servidor: ${queryError.message}`
+        : null),
     saveCheckIn,
     canEdit,
-    isLoading: !weekLoaded || (!!weekData && (isLoadingCheckIn || isLoadingWeek)),
+    isLoading: !weekLoaded || (!!weekData && !queryError && (isLoadingCheckIn || isLoadingWeek)),
     isSaving: createMutation.isPending || updateMutation.isPending,
   };
 }
