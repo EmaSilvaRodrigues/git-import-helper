@@ -136,14 +136,10 @@ class ApiClient {
   }
 
   async getCheckInsForWeek(weekNumber: number, year: number): Promise<CheckIn[]> {
-    try {
-      const response = await this.request<{ success: boolean; checkins: CheckIn[] }>(
-        `api/checkins/week/${weekNumber}/${year}`
-      );
-      return response.checkins || [];
-    } catch {
-      return [];
-    }
+    const response = await this.request<{ success: boolean; checkins: CheckIn[] }>(
+      `api/checkins/week/${weekNumber}/${year}`
+    );
+    return response.checkins || [];
   }
 
   async updateCheckIn(checkinId: number, data: UpdateCheckInRequest): Promise<CheckIn> {
