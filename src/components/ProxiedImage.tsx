@@ -47,7 +47,8 @@ export function ProxiedImage({ src, alt, className = '' }: ProxiedImageProps) {
           setHasError(true);
           setIsLoading(false);
         }
-      });
+      })
+      .finally(() => globalThis.clearTimeout(timeoutId));
 
     return () => {
       cancelled = true;
