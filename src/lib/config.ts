@@ -13,10 +13,10 @@
  *   - /health
  */
 
-const DIARY_PUBLIC_ORIGIN = 'https://sixtypenny-pseudonymously-randall.ngrok-free.dev';
 const DIARY_BASE_PATH = '/diary';
 
-const DEFAULT_DIARY_BASE_URL = `${DIARY_PUBLIC_ORIGIN}${DIARY_BASE_PATH}`;
+const DEFAULT_DIARY_BASE_URL =
+  'https://sixtypenny-pseudonymously-randall.ngrok-free.dev/diary';
 
 const DEFAULT_DIARY_API_KEY =
   'e81f7f0421f39c243691c78e518b07d8f692f90f3e89ec0d53d0d2467adfb5a9';
