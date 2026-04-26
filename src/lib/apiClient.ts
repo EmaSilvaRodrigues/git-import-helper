@@ -11,9 +11,20 @@ import type {
 } from './types';
 import {
   RESOLVED_DIARY_BASE_URL,
+  DIARY_REQUEST_TIMEOUT_MS,
   diaryAuthHeaders,
   diaryErrorMessage,
 } from './config';
+
+const createTimeoutSignal = (timeoutMs: number): { signal: AbortSignal; cleanup: () => void } => {
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => controller.abort(), timeoutMs);
+
+  return {
+    signal: controller.signal,
+    cleanup: () => window.clearTimeout(timeoutId),
+  };
+};
 
 class ApiClient {
   private baseUrl: string;
@@ -31,6 +42,25 @@ class ApiClient {
     return `${this.baseUrl}/${normalizedEndpoint}`;
   }
 
+  private async fetchWithTimeout(url: string, options: RequestInit = {}): Promise<Response> {
+    const { signal, cleanup } = createTimeoutSignal(DIARY_REQUEST_TIMEOUT_MS);
+
+    try {
+      return await fetch(url, {
+        ...options,
+        signal: options.signal || signal,
+      });
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        throw new Error(`Pedido ao diário excedeu ${DIARY_REQUEST_TIMEOUT_MS / 1000}s`);
+      }
+
+      throw error;
+    } finally {
+      cleanup();
+    }
+  }
+
   private async request<T>(
     endpoint: string,
     options: RequestInit = {}
@@ -46,7 +76,7 @@ class ApiClient {
     console.info('[Diary API] x-api-key header attached:', Boolean(headers['x-api-key']));
 
     try {
-      const response = await fetch(url, {
+      const response = await this.fetchWithTimeout(url, {
         ...options,
         headers,
       });
@@ -147,7 +177,7 @@ class ApiClient {
     console.info('[Diary API] Request URL:', url);
     console.info('[Diary API] x-api-key header attached:', Boolean(diaryAuthHeaders()['x-api-key']));
 
-    const response = await fetch(url, {
+    const response = await this.fetchWithTimeout(url, {
       method: 'POST',
       body: formData,
       headers: diaryAuthHeaders(),
@@ -215,7 +245,7 @@ class ApiClient {
     const headers = diaryAuthHeaders();
     console.info('[Diary API] Request URL:', url);
     console.info('[Diary API] x-api-key header attached:', Boolean(headers['x-api-key']));
-    const res = await fetch(url, { headers });
+    const res = await this.fetchWithTimeout(url, { headers });
     if (!res.ok) {
       throw new Error(diaryErrorMessage(res.status, `Health check failed (HTTP ${res.status})`));
     }
