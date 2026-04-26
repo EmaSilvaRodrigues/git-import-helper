@@ -13,27 +13,44 @@
  *   - /health
  */
 
-const DEFAULT_DIARY_BASE_URL =
-  'https://sixtypenny-pseudonymously-randall.ngrok-free.dev/diary';
+const DIARY_PUBLIC_ORIGIN = 'https://sixtypenny-pseudonymously-randall.ngrok-free.dev';
+const DIARY_BASE_PATH = '/diary';
+
+const DEFAULT_DIARY_BASE_URL = `${DIARY_PUBLIC_ORIGIN}${DIARY_BASE_PATH}`;
 
 const DEFAULT_DIARY_API_KEY =
   'e81f7f0421f39c243691c78e518b07d8f692f90f3e89ec0d53d0d2467adfb5a9';
 
-export const DIARY_BASE_URL = (
+const normalizeDiaryBaseUrl = (rawUrl?: string): string => {
+  const configuredUrl = (rawUrl || DEFAULT_DIARY_BASE_URL).replace(/\/$/, '');
+
+  // Never allow the diary frontend to be pointed at the INVST proxy.
+  if (/\/invst(?:\/|$)/.test(configuredUrl)) {
+    console.warn('[Diary Config] Ignoring INVST backend URL for diary frontend:', configuredUrl);
+    return DEFAULT_DIARY_BASE_URL;
+  }
+
+  if (/\/diary(?:\/|$)/.test(configuredUrl)) {
+    return configuredUrl.replace(/\/diary(?:\/.*)?$/, DIARY_BASE_PATH);
+  }
+
+  return `${configuredUrl}${DIARY_BASE_PATH}`;
+};
+
+export const DIARY_BASE_URL = normalizeDiaryBaseUrl(
   import.meta.env.VITE_DIARY_API_URL ||
-  import.meta.env.VITE_API_URL ||
-  DEFAULT_DIARY_BASE_URL
-).replace(/\/$/, '');
+  import.meta.env.VITE_API_URL
+);
 
 export const DIARY_API_KEY =
   import.meta.env.VITE_DIARY_API_KEY || DEFAULT_DIARY_API_KEY;
 
-// Hard guarantee: the diary backend lives under /diary. If somehow a base URL
-// without that suffix is configured (old env var, root-domain leftover), force
-// it back so production/mobile never call the wrong backend.
-export const RESOLVED_DIARY_BASE_URL = /\/diary$/.test(DIARY_BASE_URL)
-  ? DIARY_BASE_URL
-  : `${DIARY_BASE_URL.replace(/\/$/, '')}/diary`;
+export const DIARY_REQUEST_TIMEOUT_MS = Number(
+  import.meta.env.VITE_DIARY_REQUEST_TIMEOUT_MS || 12000
+);
+
+// Hard guarantee: the diary backend lives under /diary.
+export const RESOLVED_DIARY_BASE_URL = DIARY_BASE_URL;
 
 /** Common headers that every diary request must send. */
 export const diaryAuthHeaders = (): Record<string, string> => ({
