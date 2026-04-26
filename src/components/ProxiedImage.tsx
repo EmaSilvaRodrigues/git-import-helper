@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Loader2, ImageOff } from 'lucide-react';
-import { diaryAuthHeaders } from '@/lib/config';
+import { DIARY_REQUEST_TIMEOUT_MS, diaryAuthHeaders } from '@/lib/config';
 
 interface ProxiedImageProps {
   src: string;
@@ -17,11 +17,17 @@ export function ProxiedImage({ src, alt, className = '' }: ProxiedImageProps) {
     if (!src) return;
 
     let cancelled = false;
+    const controller = new AbortController();
+    const timeoutId = globalThis.setTimeout(
+      () => controller.abort(),
+      DIARY_REQUEST_TIMEOUT_MS
+    );
     setIsLoading(true);
     setHasError(false);
 
     fetch(src, {
       headers: diaryAuthHeaders(),
+      signal: controller.signal,
     })
       .then((res) => {
         if (!res.ok) throw new Error('Failed to load image');
@@ -41,10 +47,13 @@ export function ProxiedImage({ src, alt, className = '' }: ProxiedImageProps) {
           setHasError(true);
           setIsLoading(false);
         }
-      });
+      })
+      .finally(() => globalThis.clearTimeout(timeoutId));
 
     return () => {
       cancelled = true;
+      globalThis.clearTimeout(timeoutId);
+      controller.abort();
       setBlobUrl((prev) => {
         if (prev) URL.revokeObjectURL(prev);
         return null;
