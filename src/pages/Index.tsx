@@ -47,26 +47,26 @@ const Index = () => {
     return <ProfileSelector onSelect={selectProfile} />;
   }
 
+  // Error loading week data
+  if (weekError) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-center max-w-sm px-4">
+          <p className="text-destructive mb-4">{weekError}</p>
+          <p className="text-sm text-muted-foreground">
+            Verifica a ligação ao servidor do diário.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   // Loading check-ins/week data
   if (isCheckInsLoading || !weekData) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="animate-pulse text-muted-foreground">
           A carregar dados...
-        </div>
-      </div>
-    );
-  }
-
-  // Error loading week data
-  if (weekError) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="text-center">
-          <p className="text-destructive mb-4">{weekError}</p>
-          <p className="text-sm text-muted-foreground">
-            Verifica a tua ligação à internet
-          </p>
         </div>
       </div>
     );
