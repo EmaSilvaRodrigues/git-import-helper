@@ -18,11 +18,11 @@ import {
 
 const createTimeoutSignal = (timeoutMs: number): { signal: AbortSignal; cleanup: () => void } => {
   const controller = new AbortController();
-  const timeoutId = window.setTimeout(() => controller.abort(), timeoutMs);
+  const timeoutId = globalThis.setTimeout(() => controller.abort(), timeoutMs);
 
   return {
     signal: controller.signal,
-    cleanup: () => window.clearTimeout(timeoutId),
+    cleanup: () => globalThis.clearTimeout(timeoutId),
   };
 };
 
