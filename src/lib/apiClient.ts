@@ -31,6 +31,20 @@ class ApiClient {
 
   constructor(baseUrl: string) {
     this.baseUrl = baseUrl.replace(/\/$/, '');
+
+    // Hard guard: the diary frontend MUST talk to a URL ending in /diary.
+    // If the bundle was built with an older base URL (no /diary), force-fix it
+    // here so the deployed site never silently calls the wrong backend path.
+    if (!/\/diary$/.test(this.baseUrl)) {
+      const fixed = this.baseUrl.replace(/\/+$/, '') + '/diary';
+      console.error(
+        '[Diary API] Base URL missing /diary prefix. Forcing:',
+        this.baseUrl,
+        '->',
+        fixed
+      );
+      this.baseUrl = fixed;
+    }
   }
 
   get base(): string {
@@ -53,6 +67,13 @@ class ApiClient {
     } catch (error) {
       if (error instanceof DOMException && error.name === 'AbortError') {
         throw new Error(`Pedido ao diário excedeu ${DIARY_REQUEST_TIMEOUT_MS / 1000}s`);
+      }
+
+      // TypeError: Failed to fetch == network error / CORS / DNS / offline.
+      if (error instanceof TypeError) {
+        throw new Error(
+          `Falha de rede ao contactar o diário (${url}). Possível CORS, URL incorreta ou servidor offline.`
+        );
       }
 
       throw error;
