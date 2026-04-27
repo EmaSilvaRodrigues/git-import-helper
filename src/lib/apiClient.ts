@@ -69,6 +69,13 @@ class ApiClient {
         throw new Error(`Pedido ao diário excedeu ${DIARY_REQUEST_TIMEOUT_MS / 1000}s`);
       }
 
+      // TypeError: Failed to fetch == network error / CORS / DNS / offline.
+      if (error instanceof TypeError) {
+        throw new Error(
+          `Falha de rede ao contactar o diário (${url}). Possível CORS, URL incorreta ou servidor offline.`
+        );
+      }
+
       throw error;
     } finally {
       cleanup();
