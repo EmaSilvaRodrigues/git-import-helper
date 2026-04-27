@@ -31,6 +31,20 @@ class ApiClient {
 
   constructor(baseUrl: string) {
     this.baseUrl = baseUrl.replace(/\/$/, '');
+
+    // Hard guard: the diary frontend MUST talk to a URL ending in /diary.
+    // If the bundle was built with an older base URL (no /diary), force-fix it
+    // here so the deployed site never silently calls the wrong backend path.
+    if (!/\/diary$/.test(this.baseUrl)) {
+      const fixed = this.baseUrl.replace(/\/+$/, '') + '/diary';
+      console.error(
+        '[Diary API] Base URL missing /diary prefix. Forcing:',
+        this.baseUrl,
+        '->',
+        fixed
+      );
+      this.baseUrl = fixed;
+    }
   }
 
   get base(): string {
